@@ -26,7 +26,6 @@ def read_image(path):
     labels = []
     for index, folder in enumerate(label_dir):
         for img in glob.glob(folder+'/*.png'):
-            print("reading the image:%s" % img)
             image = io.imread(img)
             image = transform.resize(image, (w, h, c))
             images.append(image)
@@ -38,7 +37,7 @@ def read_image(path):
 train_data, train_label = read_image(train_path)
 test_data, test_label = read_image(test_path)
 
-print(train_data, train_label)
+print(train_data.shape,len(train_label))
 
 #打乱训练数据及测试数据  np.arange()返回一个有终点和起点的固定步长的排列,
 train_image_num = len(train_data)

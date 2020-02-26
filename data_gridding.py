@@ -6,7 +6,7 @@ import re
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from math import cos, sin, atan2, sqrt, pi, radians, degrees
+from math import cos, sin, atan2, sqrt, pi, radians, degrees, ceil
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -15,6 +15,12 @@ sys.path.append(BASE_DIR)
 label_dirs = [[16, 19], [43, 260], [129, 274]]
 # 按道路分类的父级目录
 label_set = [0, 1, 2]
+# 将所有的点集网格尺寸设置为32*32
+w = 32
+h = 32
+c = 1
+# 网格化点集中单个点转化成网格的权重
+weight = 6
 
 # 获取二维点集的中心点坐标
 def get_centroid(point_set):
@@ -27,8 +33,10 @@ def get_centroid(point_set):
 def n_rotate(angle, valuex, valuey, centerx, centery):
     valuex = np.array(valuex)
     valuey = np.array(valuey)
-    nRotatex = (valuex-centerx)*cos(angle) - (valuey-centery)*sin(angle) + centerx
-    nRotatey = (valuex-centerx)*sin(angle) + (valuey-centery)*cos(angle) + centery
+    nRotatex = (valuex-centerx)*cos(angle) - \
+        (valuey-centery)*sin(angle) + centerx
+    nRotatey = (valuex-centerx)*sin(angle) + \
+        (valuey-centery)*cos(angle) + centery
     return nRotatex, nRotatey
 
 # 绘制点集
@@ -75,10 +83,10 @@ def get_csv_data(path_list):
                 data, [data[random.randint(0, data_len-1)]], axis=0)
             count += 1
         sum_data = np.append(sum_data, [data], axis=0)
-    print("--", sum_data.shape)
+    print(sum_data.shape)
     return sum_data
 
-
+# 获取点集数据的网格边界
 def get_csv_data_border(data):
     y_max = float("-inf")
     y_min = float("inf")
@@ -94,9 +102,59 @@ def get_csv_data_border(data):
             y_max = y
         elif y < y_min:
             y_min = y
-    # print(y_max - y_min)
-    # print(x_max - x_min)
     return y_max, y_min, x_max, x_min
+
+# 随机打乱点集数据
+def exchange_data_index(sum_data, label_data):
+    cursor_index = 0
+    max_range = len(sum_data)
+    while cursor_index < max_range:
+        random_index = random.randint(0, max_range-1)
+        temp_sum_data = sum_data[0]
+        temp_label_data = label_data[0]
+
+        sum_data = np.delete(sum_data, 0, axis=0)
+        label_data = np.delete(label_data, 0, axis=0)
+        sum_data = np.insert(sum_data, random_index, temp_sum_data, axis=0)
+        label_data = np.insert(label_data, random_index,
+                               temp_label_data, axis=0)
+
+        cursor_index += 1
+    return sum_data, label_data
+
+
+def get_label_and_data(root_path, label_dirs):
+    sum_data = np.empty([0, 1024, 2], dtype=np.dtype('<f4'))
+    typical_data = np.empty([0, 1], dtype=np.dtype('<f4'))
+
+    for data_type, label_dir_set in enumerate(label_dirs):
+        print(">> 现在进入【第%d类】数据" % (data_type+1))
+        for rotate_angle in label_dir_set:
+            print("-- 需要旋转%d度的数据集：" % (rotate_angle))
+            # 获取csv文件列表
+            csv_list = get_csv_list(
+                root_path + str(data_type) + '/' + str(rotate_angle))
+            # 获取csv文件点集数据
+            csv_data = get_csv_data(csv_list)
+            # 遍历样本数据
+            for i, sample_data in enumerate(csv_data):
+                # 求出点集的中心坐标点
+                centroid_x, centroid_y = get_centroid(sample_data)
+                # 根据中心坐标点旋转点集中的点
+                for index, coordinate in enumerate(sample_data):
+                    x, y = coordinate
+                    n_x, n_y = n_rotate(
+                        radians(rotate_angle), x, y, centroid_x, centroid_y)
+                    # 旋转后的点集坐标中心化
+                    sample_data[index] = [n_x-centroid_x, n_y-centroid_y]
+                # 旋转后的点集回归原列表
+                csv_data[i] = sample_data
+                # 归集点集标签
+                typical_data = np.append(typical_data, [[data_type]], axis=0)
+            # 将每个不同数量的样本合并到主列表中（n,1024,2）=>（m,n,1024,2）
+            sum_data = np.append(sum_data, csv_data, axis=0)
+
+    return sum_data, typical_data
 
 
 if __name__ == "__main__":
@@ -104,53 +162,48 @@ if __name__ == "__main__":
     TRAIN_CSV_PATH = './pointdata2/traindata2/'
     TEST_CSV_PATH = './pointdata2/testdata2/'
 
-    sum_data = np.empty([0, 1024, 2], dtype=np.dtype('<f4'))
-    typical_data = [[[], []], [[], []], [[], []]]
+    sum_train_data, train_typical_data = get_label_and_data(
+        TRAIN_CSV_PATH, label_dirs)
+    sum_test_data, test_typical_data = get_label_and_data(
+        TEST_CSV_PATH, label_dirs)
 
-    # original_train_data_set = []
-    # original_test_data_set = []
-    for data_type, label_dir_set in enumerate(label_dirs):
-        print("现在进入【第%d类】数据" % (data_type+1))
-        # temp_train_data_set = []
-        # temp_test_data_set = []
-        for sub_index, rotate_angle in enumerate(label_dir_set):
-            print("-- 需要旋转%d度的数据集：" % (rotate_angle))
-            # 获取csv文件列表
-            csv_list = get_csv_list(TRAIN_CSV_PATH + str(data_type) + '/' + str(rotate_angle))
-            # 获取csv文件点集数据
-            csv_data = get_csv_data(csv_list)
+    # 随机打乱点集数据
+    rand_sum_train_data, rand_train_typical_data = exchange_data_index(
+        sum_train_data, train_typical_data)
+    rand_sum_test_data, rand_test_typical_data = exchange_data_index(
+        sum_test_data, test_typical_data)
+    # 获取所有点集的最大网格边界
+    y_max, y_min, x_max, x_min = get_csv_data_border(
+        np.append(rand_sum_train_data, rand_sum_test_data, axis=0).reshape(-1, 2))
+    # 获取所有点集的网格宽和高（中心点为坐标原点）
+    grid_w = max(ceil(abs(x_max)), ceil(abs(x_min)))*2
+    grid_h = max(ceil(abs(y_max)), ceil(abs(y_min)))*2
 
-            # 遍历样本数据
-            for i,sample_data in enumerate(csv_data):
-                print(sample_data.shape)
-                # 求出点集的中心坐标点
-                centroid_x, centroid_y = get_centroid(sample_data)
-                print("中心坐标点为：(%.10f, %.10f)" % (centroid_x, centroid_y))
+    # 每个小格子的间距
+    grid_interval_x = grid_w/w
+    grid_interval_y = grid_h/h
 
-                draw_data_set(sample_data)
-
-                # 根据中心坐标点旋转点集中的点
-                for index, coordinate in enumerate(sample_data):
-                    x, y = coordinate
-                    sample_data[index] = n_rotate(radians(rotate_angle), x, y, centroid_x, centroid_y)
-                # 旋转后点集回归原列表
-                csv_data[i] = sample_data
-                
-                draw_data_set(sample_data)
-
-            sum_data = np.append(sum_data, csv_data, axis=0)
-            typical_data[data_type][sub_index].append(csv_data.tolist())
-
-            # csv_data = grid_csv_data(csv_data)
-            # csv_data = grid_csv_data(csv_data)
-
-            # temp_train_data_set.append(get_csv_list(
-            #     TRAIN_CSV_PATH + str(data_type) + '/' + str(rotate_angle)))
-            # temp_test_data_set.append(get_csv_list(
-            #     TEST_CSV_PATH + str(data_type) + '/' + str(rotate_angle)))
-
-        # original_train_data_set.append(temp_train_data_set)
-        # original_test_data_set.append(temp_test_data_set)
+    # 创建网格矩阵
+    grid_set = np.ones([0, 32, 32, 1], dtype=float)*255
+    # 遍历每个样本
+    for train_sample_data in rand_sum_train_data:
+        # 单个样本网格
+        sample_grid = np.ones([32, 32, 1], dtype=float)*255
+        # 遍历样本中的坐标
+        for coordinate in train_sample_data:
+            x, y = coordinate
+            # 计算样本数据距离左上角坐标的相对距离
+            x_distance = abs(x - x_min)
+            y_distance = abs(y - y_max)
+            # 求出样本数据在网格矩阵的位置角标
+            x_index = int(x_distance // grid_interval_x) + 1
+            y_index = int(y_distance // grid_interval_y) + 1
+            # 如果网格矩阵的值大于权重，则减少相应的权重值
+            if sample_grid[x_index][y_index][0] >= weight:
+                sample_grid[x_index][y_index][0] -= weight
+        # 样本网格归集
+        grid_set = np.append(grid_set, [sample_grid], axis=0)
+    print(grid_set.shape)
 
     # print(np.asarray(original_train_data_set).shape)
     # print(original_test_data_set)

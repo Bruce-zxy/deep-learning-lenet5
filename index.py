@@ -25,9 +25,13 @@ def read_image(path):
     images = []
     labels = []
     for index, folder in enumerate(label_dir):
-        for img in glob.glob(folder+'/*.png'):
-            image = io.imread(img)
+        for sub_index, img in enumerate(glob.glob(folder+'/*.png')):
+            image = io.imread(img)[5:18]
+            if index == 0 and sub_index == 0:
+                print(image)
             image = transform.resize(image, (w, h, c))
+            if index == 0 and sub_index == 0:
+                print(image.tolist())
             images.append(image)
             labels.append(index)
     return np.asarray(images, dtype=np.float32), np.asarray(labels, dtype=np.int32)
@@ -37,7 +41,7 @@ def read_image(path):
 train_data, train_label = read_image(train_path)
 test_data, test_label = read_image(test_path)
 
-print(train_data.shape,len(train_label))
+print(train_data.shape, len(train_label))
 
 #打乱训练数据及测试数据  np.arange()返回一个有终点和起点的固定步长的排列,
 train_image_num = len(train_data)
@@ -194,7 +198,7 @@ with tf.Session() as sess:
     #将所有样本训练10次，每次训练中以64个为一组训练完所有样本。
     #train_num可以设置大一些。
     train_num = 10
-    batch_size = 64
+    batch_size = 1200
 
     for i in range(train_num):
 

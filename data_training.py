@@ -21,8 +21,8 @@ h = 32
 c = 1
 
 #将所有样本训练train_num次，每次训练中以batch_size个为一组训练完所有样本。
-train_num = 80
-batch_size = 4
+train_num = 100000
+batch_size = 16
 
 acc_array = np.empty([0], dtype=np.float32)
 loss_array = np.empty([0], dtype=np.float32)
@@ -54,8 +54,8 @@ def start_training(train_data, train_label, test_data, test_label):
         #第一层：卷积层，过滤器的尺寸为5×5，深度为6,不使用全0补充，步长为1。
         #尺寸变化：32×32×1->28×28×6
         '''参数的初始化：tf.truncated_normal_initializer()或者简写为tf.TruncatedNormal()、tf.RandomNormal() 去掉_initializer,大写首字母即可
-    生成截断正态分布的随机数，这个初始化方法好像在tf中用得比较多mean=0.0, stddev=1.0 正态分布
-    http://www.mamicode.com/info-detail-1835147.html'''
+        生成截断正态分布的随机数，这个初始化方法好像在tf中用得比较多mean=0.0, stddev=1.0 正态分布
+        http://www.mamicode.com/info-detail-1835147.html'''
         with tf.variable_scope('layer1-conv1'):
             conv1_weights = tf.get_variable(
                 'weight', [5, 5, c, 6], initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -147,7 +147,6 @@ def start_training(train_data, train_label, test_data, test_label):
             logit = tf.matmul(fc2, fc3_weights) + fc3_biases
         return logit
 
-
     #正则化，交叉熵，平均交叉熵，损失函数，最小化损失函数，预测和实际equal比较，tf.equal函数会得到True或False，
     #accuracy首先将tf.equal比较得到的布尔值转为float型，即True转为1.，False转为0，最后求平均值，即一组样本的正确率。
     #比如：一组5个样本，tf.equal比较为[True False True False False],转化为float型为[1. 0 1. 0 0],准确率为2./5=40%。
@@ -185,31 +184,29 @@ def start_training(train_data, train_label, test_data, test_label):
         for i in range(train_num):
 
             train_loss, train_acc, batch_num = 0, 0, 0
-            accs = []
-            losses = []
             for train_data_batch, train_label_batch in get_batch(train_data, train_label, batch_size):
                 _, err, acc = sess.run([train_op, loss, accuracy], feed_dict={
                                     x: train_data_batch, y_: train_label_batch})
                 train_loss += err
                 train_acc += acc
-                accs.append(acc)
-                losses.append(err)
                 batch_num += 1
-            global acc_array,loss_array
-            acc_array = np.append(acc_array, np.asarray(accs), axis=0)
-            loss_array = np.append(loss_array, np.asarray(losses), axis=0)
             print("train loss:", train_loss/batch_num)
             print("train acc:", train_acc/batch_num)
 
-            # test_loss, test_acc, batch_num = 0, 0, 0
-            # for test_data_batch, test_label_batch in get_batch(test_data, test_label, batch_size):
-            #     err, acc = sess.run([loss, accuracy], feed_dict={
-            #                         x: test_data_batch, y_: test_label_batch})
-            #     test_loss += err
-            #     test_acc += acc
-            #     batch_num += 1
-            # print("test loss:", test_loss/batch_num)
-            # print("test acc:", test_acc/batch_num)
+            test_loss, test_acc, batch_num = 0, 0, 0
+            for test_data_batch, test_label_batch in get_batch(test_data, test_label, batch_size):
+                err, acc = sess.run([loss, accuracy], feed_dict={
+                                    x: test_data_batch, y_: test_label_batch})
+                test_loss += err
+                test_acc += acc
+                batch_num += 1
+            global acc_array, loss_array
+            acc_array = np.append(acc_array, np.asarray(
+                [test_loss/batch_num]), axis=0)
+            loss_array = np.append(loss_array, np.asarray(
+                [test_acc/batch_num]), axis=0)
+            print("test loss:", test_loss/batch_num)
+            print("test acc:", test_acc/batch_num)
 
 
 if __name__ == "__main__":
@@ -225,9 +222,10 @@ if __name__ == "__main__":
     start_training(normalized_train_data, rand_train_typical_data,
                    normalized_test_data, rand_test_typical_data)
 
-    acc_len = (acc_array)
+    acc_len = len(acc_array)
     plt.plot([i for i in range(acc_len)], acc_array)
-    plt.xlim(0.,float(acc_len))
-    plt.ylim(0.,1.)
+    plt.show()
+
+    plt.plot([i for i in range(acc_len)], loss_array)
     plt.show()
 

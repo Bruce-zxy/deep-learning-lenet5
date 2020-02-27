@@ -4,7 +4,7 @@ import glob
 import numpy as np
 import tensorflow as tf
 
-# https: // blog.csdn.net/enchanted_zhouh/article/details/76855108
+# https://blog.csdn.net/enchanted_zhouh/article/details/76855108
 
 #将所有的图片重新设置尺寸为32*32
 w = 32

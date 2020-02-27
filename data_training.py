@@ -21,7 +21,7 @@ h = 32
 c = 1
 
 #将所有样本训练train_num次，每次训练中以batch_size个为一组训练完所有样本。
-train_num = 100000
+train_num = 500000
 batch_size = 16
 
 acc_array = np.empty([0], dtype=np.float32)
@@ -190,8 +190,8 @@ def start_training(train_data, train_label, test_data, test_label):
                 train_loss += err
                 train_acc += acc
                 batch_num += 1
-            print("train loss:", train_loss/batch_num)
-            print("train acc:", train_acc/batch_num)
+            # print("train loss:", train_loss/batch_num)
+            # print("train acc:", train_acc/batch_num)
 
             test_loss, test_acc, batch_num = 0, 0, 0
             for test_data_batch, test_label_batch in get_batch(test_data, test_label, batch_size):
@@ -222,10 +222,10 @@ if __name__ == "__main__":
     start_training(normalized_train_data, rand_train_typical_data,
                    normalized_test_data, rand_test_typical_data)
 
-    acc_len = len(acc_array)
-    plt.plot([i for i in range(acc_len)], acc_array)
-    plt.show()
+    # acc_len = len(acc_array)
+    # plt.plot([i for i in range(acc_len)], acc_array)
+    # plt.show()
 
-    plt.plot([i for i in range(acc_len)], loss_array)
-    plt.show()
+    # plt.plot([i for i in range(acc_len)], loss_array)
+    # plt.show()
 

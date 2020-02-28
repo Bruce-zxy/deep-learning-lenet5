@@ -21,8 +21,8 @@ h = 32
 c = 1
 
 #将所有样本训练train_num次，每次训练中以batch_size个为一组训练完所有样本。
-train_num = 500000
-batch_size = 16
+train_num = 2000
+batch_size = 121
 
 acc_array = np.empty([0], dtype=np.float32)
 loss_array = np.empty([0], dtype=np.float32)
@@ -157,13 +157,13 @@ def start_training(train_data, train_label, test_data, test_label):
     https://blog.csdn.net/liushui94/article/details/73481112
     sparse_softmax_cross_entropy_with_logits()是将softmax和cross_entropy放在一起计算
     https://blog.csdn.net/ZJRN1027/article/details/80199248'''
-    regularizer = tf.contrib.layers.l2_regularizer(0.001)
+    regularizer = tf.contrib.layers.l2_regularizer(0.0001)
     y = inference(x, False, regularizer)
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=y, labels=y_)
     cross_entropy_mean = tf.reduce_mean(cross_entropy)
     loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
-    train_op = tf.train.AdamOptimizer(0.001).minimize(loss)
+    train_op = tf.train.AdamOptimizer(0.0001).minimize(loss)
     correct_prediction = tf.equal(tf.cast(tf.argmax(y, 1), tf.int32), y_)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -190,8 +190,9 @@ def start_training(train_data, train_label, test_data, test_label):
                 train_loss += err
                 train_acc += acc
                 batch_num += 1
-            # print("train loss:", train_loss/batch_num)
-            # print("train acc:", train_acc/batch_num)
+            print('【训练#第%d轮共%d批，每批%d个元数据】' % (i, batch_num, batch_size))
+            print("train loss:", train_loss/batch_num)
+            print("train acc:", train_acc/batch_num)
 
             test_loss, test_acc, batch_num = 0, 0, 0
             for test_data_batch, test_label_batch in get_batch(test_data, test_label, batch_size):
@@ -202,11 +203,12 @@ def start_training(train_data, train_label, test_data, test_label):
                 batch_num += 1
             global acc_array, loss_array
             acc_array = np.append(acc_array, np.asarray(
-                [test_loss/batch_num]), axis=0)
+                [test_acc/(batch_num)]), axis=0)
             loss_array = np.append(loss_array, np.asarray(
-                [test_acc/batch_num]), axis=0)
-            print("test loss:", test_loss/batch_num)
-            print("test acc:", test_acc/batch_num)
+                [test_loss/(batch_num)]), axis=0)
+            print('【测试-第%d轮共%d批，每批%d个元数据】' %(i,batch_num,batch_size))
+            print("test loss:", test_loss/(batch_num))
+            print("test acc:", test_acc/(batch_num))
 
 
 if __name__ == "__main__":
@@ -222,10 +224,10 @@ if __name__ == "__main__":
     start_training(normalized_train_data, rand_train_typical_data,
                    normalized_test_data, rand_test_typical_data)
 
-    # acc_len = len(acc_array)
-    # plt.plot([i for i in range(acc_len)], acc_array)
-    # plt.show()
+    acc_len = len(acc_array)
+    plt.plot([i for i in range(acc_len)], acc_array)
+    plt.show()
 
-    # plt.plot([i for i in range(acc_len)], loss_array)
-    # plt.show()
+    plt.plot([i for i in range(acc_len)], loss_array)
+    plt.show()
 

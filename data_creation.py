@@ -17,8 +17,8 @@ TRAIN_CSV_PATH = './pointdata4/traindata/'
 TEST_CSV_PATH = './pointdata4/testdata/'
 
 data_path = './h5/'
-train_file_path = data_path + 'train_data.h5'
-test_file_path = data_path + 'test_data.h5'
+train_file_path = data_path + 'initial_train_data.h5'
+test_file_path = data_path + 'initial_test_data.h5'
 
 # 按旋转角度分类的子级目录
 label_dirs = [[16, 19], [43,71,129, 260], [95,128,129, 274]]

@@ -11,14 +11,16 @@ from math import cos, sin, atan2, sqrt, pi, radians, degrees, ceil
 
 # 数据集路径
 data_path = './h5/'
-train_file_path = data_path + 'train_data.h5'
-test_file_path = data_path + 'test_data.h5'
+train_file_path = data_path + 'initial_train_data.h5'
+test_file_path = data_path + 'initial_test_data.h5'
+normaliaztion_train_file_path = data_path + 'normaliaztion_train_data.h5'
+normaliaztion_test_file_path = data_path + 'normaliaztion_test_data.h5'
 
 # 将所有的点集网格尺寸设置为32*32
 w = 32
 h = 32
 # 网格化点集中单个点转化成网格的权重
-weight_factor = 0.0235
+weight_factor = 0.0325
 start_factor = 0.9
 end_factor = 1
 
@@ -38,12 +40,11 @@ def normalized_data(data):
             x_distance = abs(x - x_min)
             y_distance = abs(y - y_max)
             # 求出样本数据在网格矩阵的位置角标
-            x_index = int(x_distance // grid_interval_x) + 1
-            y_index = int(y_distance // grid_interval_y) + 1
+            x_index = int(x_distance // grid_interval_x)
+            y_index = int(y_distance // grid_interval_y)
             # 如果网格矩阵的值大于权重，则减少相应的权重值
             if sample_grid[x_index][y_index][0] >= weight_factor:
-                sample_grid[x_index][y_index][0] -= weight_factor * \
-                    (random.random() * abs(end_factor - start_factor) + start_factor)
+                sample_grid[x_index][y_index][0] -= weight_factor * (random.random() * abs(end_factor - start_factor) + start_factor)
         count += 1
         print('【计数】：', count)
         print(pd.DataFrame(sample_grid.reshape([w, h])))
@@ -94,16 +95,16 @@ if __name__ == "__main__":
     normalized_train_data = normalized_data(rand_sum_train_data)
     normalized_test_data = normalized_data(rand_sum_test_data)
 
-    if os.access(train_file_path, os.F_OK) == True:
-        os.remove(train_file_path)
-    open(train_file_path, 'w')
-    with h5py.File(train_file_path, 'r+') as f:
+    if os.access(normaliaztion_train_file_path, os.F_OK) == True:
+        os.remove(normaliaztion_train_file_path)
+    open(normaliaztion_train_file_path, 'w')
+    with h5py.File(normaliaztion_train_file_path, 'r+') as f:
         f.create_dataset('data', data=normalized_train_data)
         f.create_dataset('label', data=rand_train_typical_data)
 
-    if os.access(test_file_path, os.F_OK) == True:
-        os.remove(test_file_path)
-    open(test_file_path, 'w')
-    with h5py.File(test_file_path, 'r+') as f:
+    if os.access(normaliaztion_test_file_path, os.F_OK) == True:
+        os.remove(normaliaztion_test_file_path)
+    open(normaliaztion_test_file_path, 'w')
+    with h5py.File(normaliaztion_test_file_path, 'r+') as f:
         f.create_dataset('data', data=normalized_test_data)
         f.create_dataset('label', data=rand_test_typical_data)

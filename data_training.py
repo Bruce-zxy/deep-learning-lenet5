@@ -11,13 +11,16 @@ import matplotlib.pyplot as plt
 from math import cos, sin, atan2, sqrt, pi, radians, degrees, ceil, floor
 import tensorflow as tf
 
+file_time = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
 # 数据集路径
 data_path = './h5/'
 train_file_path = data_path + 'normaliaztion_train_data.h5'
 test_file_path = data_path + 'normaliaztion_test_data.h5'
 log_path = './log/'
-log_file_path = log_path + time.strftime('%Y%m%d%H%M%S',time.localtime(time.time())) + '.h5'
-log_text_path = log_path + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())) + '.txt'
+log_file_path = log_path + file_time  + '.h5'
+log_text_path = log_path + file_time + '.txt'
+modal_path = './modal/'
+modal_file_path = modal_path + 'mymodal'
 
 # 将所有的点集网格尺寸设置为32*32
 w = 32
@@ -25,8 +28,8 @@ h = 32
 c = 1
 
 #将所有样本训练train_num次，每次训练中以batch_size个为一组训练完所有样本。
-train_num = 2000
-batch_size = 44
+train_num = 3500
+batch_size = 55
 regulary = 0.00375
 learning_rate = 0.00125
 beta1 = 0.8
@@ -38,6 +41,7 @@ train_acc_array = np.empty([0], dtype=np.float32)
 train_loss_array = np.empty([0], dtype=np.float32)
 test_acc_array = np.empty([0], dtype=np.float32)
 test_loss_array = np.empty([0], dtype=np.float32)
+test_avg_acc = 0
 
 #搭建CNN 此函数可以理解为形参，用于定义过程，在执行的时候再赋具体的值,形参名X，y_
 x = tf.placeholder(tf.float32, [None, w, h, c], name='x')
@@ -186,11 +190,17 @@ def start_training(train_data, train_label, test_data, test_label):
     train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=beta1, beta2=beta2).minimize(loss)
     correct_prediction = tf.equal(tf.cast(tf.argmax(y, 1), tf.int32), y_)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    saver = tf.train.Saver()
 
     #创建Session会话
     with tf.Session() as sess:
-        #初始化所有变量(权值，偏置等)
-        sess.run(tf.global_variables_initializer())
+
+        if os.access(modal_file_path + '.meta', os.F_OK) == True:
+            saver = tf.train.import_meta_graph(modal_file_path + '.meta')
+            saver.restore(sess, tf.train.latest_checkpoint('./'))
+        else:
+            #初始化所有变量(权值，偏置等)
+            sess.run(tf.global_variables_initializer())
 
         for i in range(train_num):
 
@@ -219,11 +229,12 @@ def start_training(train_data, train_label, test_data, test_label):
                 batch_num += 1
             avg_acc = test_acc/(batch_num)
             avg_loss = test_loss/(batch_num)
-            global test_acc_array, test_loss_array, max_test_acc, min_test_loss
+            global test_acc_array, test_loss_array, max_test_acc, min_test_loss, test_avg_acc
             test_acc_array = np.append(test_acc_array, np.asarray(
                 [avg_acc]), axis=0)
             test_loss_array = np.append(test_loss_array, np.asarray(
                 [avg_loss]), axis=0)
+            test_avg_acc = i/(i+1)*test_avg_acc + 1/(i+1)*avg_acc
             if max_test_acc < avg_acc:
                 max_test_acc = avg_acc
             if min_test_loss > avg_loss:
@@ -231,6 +242,8 @@ def start_training(train_data, train_label, test_data, test_label):
             print('【测试-第%d轮共%d批，每批%d个元数据】' %(i+1,batch_num,batch_size))
             print("test loss:", avg_loss)
             print("test acc:", avg_acc)
+
+        saver.save(sess, modal_file_path)
 
 
 if __name__ == "__main__":
@@ -265,6 +278,7 @@ if __name__ == "__main__":
         f.write('beta2:' + str(beta2) + '\r\n')
         f.write('train_num:' + str(train_num) + '\r\n')
         f.write('batch_size:' + str(batch_size) + '\r\n')
+        f.write('test_avg_acc:' + str(test_avg_acc) + '\r\n')
         f.write('max_test_acc:' + str(max_test_acc) + '\r\n')
         f.write('min_test_loss:' + str(min_test_loss) + '\r\n')
         f.write('time:' +str (end_time - start_time) + 's\r\n')

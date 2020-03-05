@@ -19,8 +19,9 @@ test_file_path = data_path + 'normaliaztion_test_data.h5'
 log_path = './log/'
 log_file_path = log_path + file_time  + '.h5'
 log_text_path = log_path + file_time + '.txt'
-modal_path = './modal/'
-modal_file_path = modal_path + 'mymodal'
+modal_file_path =  'mymodal'
+# modal_path = './modal/'
+# modal_file_path = modal_path + 'mymodal'
 
 # 将所有的点集网格尺寸设置为32*32
 w = 32
@@ -182,7 +183,8 @@ def start_training(train_data, train_label, test_data, test_label):
 
     global regulary, learning_rate, beta1, beta2
     regularizer = tf.contrib.layers.l2_regularizer(regulary)
-    y = inference(x, False, regularizer)
+    # y = inference(x, False, regularizer)
+    y = inference(x, True, regularizer)
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=y, labels=y_)
     cross_entropy_mean = tf.reduce_mean(cross_entropy)
@@ -202,6 +204,7 @@ def start_training(train_data, train_label, test_data, test_label):
             #初始化所有变量(权值，偏置等)
             sess.run(tf.global_variables_initializer())
 
+        # sess.run(tf.global_variables_initializer())
         for i in range(train_num):
 
             train_loss, train_acc, batch_num = 0, 0, 0

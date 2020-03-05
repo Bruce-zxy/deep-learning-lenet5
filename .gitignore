@@ -132,3 +132,5 @@ mnist/
 h5/
 log/
 backup/
+checkpoint
+mymodal.*

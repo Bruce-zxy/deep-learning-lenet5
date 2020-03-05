@@ -75,21 +75,33 @@ def excel2np(path):
 
 if __name__ == "__main__":
 
+    height_set = []
+
     for file_name, angle in data_dict:
+        y_max = float("-inf")
+        y_min = float("inf")
         rotated_data = np.empty([0, 2], dtype=np.float32)
         original_data = excel2np("./" + file_name)
         centroid_x, centroid_y = get_centroid(original_data)
         for index, coordinate in enumerate(original_data):
             x, y = coordinate
+            if y_max < y:
+                y_max = y
+            elif y_min > y:
+                y_min = y
             n_x, n_y = n_rotate(radians(angle), x, y, centroid_x, centroid_y)
             rotated_data = np.append(rotated_data, [[n_x,  n_y]], axis=0)
         print(original_data.shape)
         print(file_name)
         print('旋转角度：', angle)
+        height_set.append(y_max-y_min)
 
         xs, ys = original_data.T
         nxs, nys = rotated_data.T
         plt.scatter(nxs, nys, c=randomcolor(), s=1)
         plt.scatter(xs, ys, c=randomcolor(), s=1)
         plt.show()
+    
+    print(height_set)
+    print(sum(height_set))
     

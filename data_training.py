@@ -7,7 +7,7 @@ import time
 import numpy as np
 import pandas as pd
 import h5py
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from math import cos, sin, atan2, sqrt, pi, radians, degrees, ceil, floor
 import tensorflow as tf
 
@@ -17,9 +17,9 @@ data_path = './h5/'
 train_file_path = data_path + 'normaliaztion_train_data.h5'
 test_file_path = data_path + 'normaliaztion_test_data.h5'
 log_path = './log/'
-log_file_path = log_path + file_time  + '.h5'
+log_file_path = log_path + file_time + '.h5'
 log_text_path = log_path + file_time + '.txt'
-modal_file_path =  'mymodal'
+modal_file_path = 'mymodal'
 # modal_path = './modal/'
 # modal_file_path = modal_path + 'mymodal'
 
@@ -29,7 +29,7 @@ h = 32
 c = 1
 
 #将所有样本训练train_num次，每次训练中以batch_size个为一组训练完所有样本。
-train_num = 3500
+train_num = 1500
 batch_size = 55
 regulary = 0.00375
 learning_rate = 0.00125
@@ -48,7 +48,23 @@ test_avg_acc = 0
 x = tf.placeholder(tf.float32, [None, w, h, c], name='x')
 y_ = tf.placeholder(tf.int32, [None], name='y_')
 
+# 随机打乱点集数据
+def exchange_data_index(sum_data, label_data):
+    cursor_index = 0
+    max_range = len(sum_data)
+    while cursor_index < max_range:
+        random_index = random.randint(0, max_range-1)
+        temp_sum_data = sum_data[0]
+        temp_label_data = label_data[0]
 
+        sum_data = np.delete(sum_data, 0, axis=0)
+        label_data = np.delete(label_data, 0, axis=0)
+        sum_data = np.insert(sum_data, random_index, temp_sum_data, axis=0)
+        label_data = np.insert(label_data, random_index,
+                               temp_label_data, axis=0)
+
+        cursor_index += 1
+    return sum_data, label_data
 
 #每次获取batch_size个样本进行训练或测试
 def get_batch(data, label, batch_size):
@@ -56,8 +72,9 @@ def get_batch(data, label, batch_size):
         slice_index = slice(start_index, start_index+batch_size)
         yield data[slice_index], label[slice_index]
 
+
 def inference(input_tensor, train, regularizer):
-    
+
     #第一层：卷积层，过滤器的尺寸为5×5，深度为6,不使用全0补充，步长为1。
     #尺寸变化：32×32×1->28×28×6
     '''参数的初始化：tf.truncated_normal_initializer()或者简写为tf.TruncatedNormal()、tf.RandomNormal() 去掉_initializer,大写首字母即可
@@ -69,14 +86,14 @@ def inference(input_tensor, train, regularizer):
         conv1_biases = tf.get_variable(
             'bias', [6], initializer=tf.constant_initializer(0.0))
         conv1 = tf.nn.conv2d(input_tensor, conv1_weights, strides=[
-                            1, 1, 1, 1], padding='VALID')
+            1, 1, 1, 1], padding='VALID')
         relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_biases))
 
     #第二层：池化层，过滤器的尺寸为2×2，使用全0补充，步长为2。
     #尺寸变化：28×28×6->14×14×6
     with tf.name_scope('layer2-pool1'):
         pool1 = tf.nn.max_pool(relu1, ksize=[1, 2, 2, 1], strides=[
-                            1, 2, 2, 1], padding='SAME')
+            1, 2, 2, 1], padding='SAME')
 
     #第三层：卷积层，过滤器的尺寸为5×5，深度为16,不使用全0补充，步长为1。
     #尺寸变化：14×14×6->10×10×16
@@ -86,14 +103,14 @@ def inference(input_tensor, train, regularizer):
         conv2_biases = tf.get_variable(
             'bias', [16], initializer=tf.constant_initializer(0.0))
         conv2 = tf.nn.conv2d(pool1, conv2_weights, strides=[
-                            1, 1, 1, 1], padding='VALID')
+            1, 1, 1, 1], padding='VALID')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
 
     #第四层：池化层，过滤器的尺寸为2×2，使用全0补充，步长为2。
     #尺寸变化：10×10×6->5×5×16
     with tf.variable_scope('layer4-pool2'):
         pool2 = tf.nn.max_pool(relu2, ksize=[1, 2, 2, 1], strides=[
-                            1, 2, 2, 1], padding='SAME')
+            1, 2, 2, 1], padding='SAME')
 
     #将第四层池化层的输出转化为第五层全连接层的输入格式。第四层的输出为5×5×16的矩阵，然而第五层全连接层需要的输入格式
     #为向量，所以我们需要把代表每张图片的尺寸为5×5×16的矩阵拉直成一个长度为5×5×16的向量。
@@ -154,6 +171,7 @@ def inference(input_tensor, train, regularizer):
         logit = tf.matmul(fc2, fc3_weights) + fc3_biases
     return logit
 
+
 def start_training(train_data, train_label, test_data, test_label):
 
     #打乱训练数据及测试数据  np.arange()返回一个有终点和起点的固定步长的排列,
@@ -183,13 +201,14 @@ def start_training(train_data, train_label, test_data, test_label):
 
     global regulary, learning_rate, beta1, beta2
     regularizer = tf.contrib.layers.l2_regularizer(regulary)
-    # y = inference(x, False, regularizer)
-    y = inference(x, True, regularizer)
+    y = inference(x, False, regularizer)
+    # y = inference(x, True, regularizer)
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=y, labels=y_)
     cross_entropy_mean = tf.reduce_mean(cross_entropy)
     loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
-    train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=beta1, beta2=beta2).minimize(loss)
+    train_op = tf.train.AdamOptimizer(
+        learning_rate=learning_rate, beta1=beta1, beta2=beta2).minimize(loss)
     correct_prediction = tf.equal(tf.cast(tf.argmax(y, 1), tf.int32), y_)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     saver = tf.train.Saver()
@@ -210,7 +229,7 @@ def start_training(train_data, train_label, test_data, test_label):
             train_loss, train_acc, batch_num = 0, 0, 0
             for train_data_batch, train_label_batch in get_batch(train_data, train_label, batch_size):
                 _, err, acc = sess.run([train_op, loss, accuracy], feed_dict={
-                                    x: train_data_batch, y_: train_label_batch})
+                    x: train_data_batch, y_: train_label_batch})
                 train_loss += err
                 train_acc += acc
                 batch_num += 1
@@ -242,7 +261,7 @@ def start_training(train_data, train_label, test_data, test_label):
                 max_test_acc = avg_acc
             if min_test_loss > avg_loss:
                 min_test_loss = avg_loss
-            print('【测试-第%d轮共%d批，每批%d个元数据】' %(i+1,batch_num,batch_size))
+            print('【测试-第%d轮共%d批，每批%d个元数据】' % (i+1, batch_num, batch_size))
             print("test loss:", avg_loss)
             print("test acc:", avg_acc)
 
@@ -258,6 +277,9 @@ if __name__ == "__main__":
     with h5py.File(test_file_path, 'r') as f:
         normalized_test_data = f['data'][()]
         rand_test_typical_data = f['label'][()]
+
+    print(normalized_train_data.shape)
+    print(normalized_test_data.shape)
 
     start_time = time.time()
 
@@ -284,13 +306,12 @@ if __name__ == "__main__":
         f.write('test_avg_acc:' + str(test_avg_acc) + '\r\n')
         f.write('max_test_acc:' + str(max_test_acc) + '\r\n')
         f.write('min_test_loss:' + str(min_test_loss) + '\r\n')
-        f.write('time:' +str (end_time - start_time) + 's\r\n')
+        f.write('time:' + str(end_time - start_time) + 's\r\n')
         f.close()
 
-    acc_len = len(test_acc_array)
-    plt.plot([i for i in range(acc_len)], test_acc_array)
-    plt.show()
+    # acc_len = len(test_acc_array)
+    # plt.plot([i for i in range(acc_len)], test_acc_array)
+    # plt.show()
 
-    plt.plot([i for i in range(acc_len)], test_loss_array)
-    plt.show()
-
+    # plt.plot([i for i in range(acc_len)], test_loss_array)
+    # plt.show()
